@@ -105,7 +105,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // Ticket helpers
 import { getGuildConfig, ensureTicket, getTicketByChannelId, updateTicketStatus, addUserToTicket, removeUserFromTicket, claimTicket, unclaimTicket, countOpenTicketsForUser, getLastTicketCreatedAt, getClosedTicketsOlderThan, markTicketArchived, getPanelById, countOpenTicketsForUserInPanel, getLastTicketCreatedAtInPanel, setTicketCloseReason } from './db.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField } from 'discord.js';
-import { createBrandEmbed } from './utils/embed.js';
 
 async function createTicketChannel(interaction, reason, panel = null) {
   const guild = interaction.guild;
