@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, Collection, GatewayIntentBits, Partials, REST, Routes, Events, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, Partials, REST, Routes, Events, PermissionFlagsBits } from 'discord.js';
 import { ensureDatabase } from './db.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,6 +35,27 @@ function pathToFileURL(p) {
 }
 
 ensureDatabase();
+
+// Basic env preflight to surface common token misconfigurations early
+function validateEnvOrExit() {
+  const token = process.env.DISCORD_TOKEN || '';
+  const appId = process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID || '';
+  if (!token) {
+    console.error('Missing DISCORD_TOKEN in environment.');
+    process.exit(1);
+  }
+  // Discord bot tokens are three dot-separated parts. This won't validate authenticity, just shape.
+  const looksLikeToken = token.split('.').length === 3 && !token.startsWith('Bot ');
+  if (!looksLikeToken) {
+    console.error('DISCORD_TOKEN does not look like a valid bot token. Ensure you pasted the Bot Token (three dot-separated parts), without quotes or "Bot ".');
+    process.exit(1);
+  }
+  if (!appId) {
+    console.error('Missing DISCORD_CLIENT_ID (Application ID) in environment.');
+  }
+}
+
+validateEnvOrExit();
 
 client.once(Events.ClientReady, (c) => {
   console.log(`Logged in as ${c.user.tag}`);
@@ -84,16 +105,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // Ticket helpers
 import { getGuildConfig, ensureTicket, getTicketByChannelId, updateTicketStatus, addUserToTicket, removeUserFromTicket, claimTicket, unclaimTicket, countOpenTicketsForUser, getLastTicketCreatedAt, getClosedTicketsOlderThan, markTicketArchived, getPanelById, countOpenTicketsForUserInPanel, getLastTicketCreatedAtInPanel, setTicketCloseReason } from './db.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField } from 'discord.js';
-function createBrandEmbed(title, description) {
-  const BRAND_COLOR = 0xF1C40F;
-  const BOT_DISPLAY_NAME = 'Light Services Ticket-bot';
-  const embed = new EmbedBuilder()
-    .setColor(BRAND_COLOR)
-    .setTitle(title || BOT_DISPLAY_NAME)
-    .setDescription(description || null)
-    .setFooter({ text: BOT_DISPLAY_NAME });
-  return embed;
-}
+import { createBrandEmbed } from './utils/embed.js';
 
 async function createTicketChannel(interaction, reason, panel = null) {
   const guild = interaction.guild;
@@ -295,7 +307,7 @@ const buttonHandlers = {
     await interaction.deferReply({ ephemeral: true });
     const channel = interaction.channel;
     try {
-      const mod = await import(new URL('./utils/transcript.js', import.meta.url).href);
+      const mod = await import('./utils/transcript.js');
       const filePath = await mod.generateTranscript(channel);
       await interaction.followUp({ content: 'Transcript generated.', files: [filePath], ephemeral: true });
     } catch (err) {
